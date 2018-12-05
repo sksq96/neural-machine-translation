@@ -2,18 +2,16 @@ import spacy
 from spacy.lang.vi import Vietnamese
 from spacy.lang.zh import Chinese
 
-
 from model import Batch
-
-nlp = {
-    'en': spacy.load('en_core_web_sm'),
-    'vi': Vietnamese(),
-    'zh': Chinese()
-}
-
 
 
 def tokenize(language):
+    nlp = {
+        'en': spacy.load('en_core_web_sm'),
+        'vi': Vietnamese(),
+        'zh': Chinese()
+    }
+
     return lambda sentence: [tok.text for tok in nlp[language](sentence)]
 
 

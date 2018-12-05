@@ -14,27 +14,20 @@ from util import rebatch
 # training settings
 parser = ArgumentParser(description='Transformer for Language Translation')
 parser.add_argument('--epochs', type=int, default=10)
-parser.add_argument('--batch_size', type=int, default=128)
+parser.add_argument('--batch_size', type=int, default=64)
 parser.add_argument('--encoder', type=str, default='rnn')
-# TODO: link size of d_embed to the pre-trained word-embedding
-parser.add_argument('--d_embed', type=int, default=300)
-parser.add_argument('--d_hidden', type=int, default=300)
-parser.add_argument('--d_fc', type=int, default=100)
-parser.add_argument('--n_layers', type=int, default=1)
-parser.add_argument('--lr', type=float, default=.001)
-parser.add_argument('--dp_ratio', type=float, default=0.2)
+parser.add_argument('--n_layers', type=int, default=6)
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--basepath', type=str, default='iwslt-vi-en')
 parser.add_argument('--train_file', type=str, default='train.tok.csv')
 parser.add_argument('--val_file', type=str, default='dev.tok.csv')
 parser.add_argument('--log_every', type=int, default=50)
-parser.add_argument('--dev_every', type=int, default=1000)
 parser.add_argument('--experiment', type=str, default='test')
 parser.add_argument('--outf', type=str, default='save')
 params = parser.parse_args()
 
-
 print(params)
+
 
 try:
     os.makedirs(params.outf)
@@ -67,7 +60,7 @@ train, val = data.TabularDataset.splits(
 
 
 # build vocabulary
-MIN_FREQ = 1
+MIN_FREQ = 2
 SRC.build_vocab(train.src, min_freq=MIN_FREQ)
 TGT.build_vocab(train.tgt, min_freq=MIN_FREQ)
 
@@ -79,12 +72,33 @@ print(f"Number of words in source vocab: {len_source}")
 print(f"Number of words in target vocab: {len_target}")
 
 
-train_iter, valid_iter = data.BucketIterator.splits(
-    (train, val),
-    batch_size=params.batch_size,
-    sort_key=lambda x: (len(x.src), len(x.tgt)),
-    device=device
-)
+# train_iter, valid_iter = data.BucketIterator.splits(
+#     (train, val),
+#     batch_size=params.batch_size,
+#     sort_key=lambda x: (len(x.src), len(x.tgt)),
+#     device=device
+# )
+
+global max_src_in_batch, max_tgt_in_batch
+def batch_size_fn(new, count, sofar):
+    "Keep augmenting batch and calculate total number of tokens + padding."
+    global max_src_in_batch, max_tgt_in_batch
+    if count == 1:
+        max_src_in_batch = 0
+        max_tgt_in_batch = 0
+    max_src_in_batch = max(max_src_in_batch,  len(new.src))
+    max_tgt_in_batch = max(max_tgt_in_batch,  len(new.tgt) + 2)
+    src_elements = count * max_src_in_batch
+    tgt_elements = count * max_tgt_in_batch
+    return max(src_elements, tgt_elements)
+
+
+train_iter = MyIterator(train, batch_size=params.batch_size, device=device,
+                        repeat=False, sort_key=lambda x: (len(x.src), len(x.tgt)),
+                        batch_size_fn=batch_size_fn, train=True)
+valid_iter = MyIterator(val, batch_size=params.batch_size, device=device,
+                        repeat=False, sort_key=lambda x: (len(x.src), len(x.tgt)),
+                        batch_size_fn=batch_size_fn, train=False)
 
 
 model = make_model(len_source, len_target, N=params.n_layers)
