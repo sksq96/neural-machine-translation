@@ -1,11 +1,18 @@
-# Goals: 21st November:
+## Neural Machine Translation
 
-- 3 Papers per person.
-- Update/ Ping on daily basis.
-- Run seq-seq with attention
-- Subtasks:
-  - Chinese-English: Peng Wei
-  - Vitetnamese-English: Shubham Chandel
-  - Byte Pair Encoding: Tushar
-  
-Link to [Draft](https://www.overleaf.com/project/5bece07ef5d31633cc798df1)
+
+### Preprocess Data
+
+- Change `"` character to `&quot;` for the `vi` files.
+
+```
+sed -i "" 's/\"/\&quot;/g' *.vi
+```
+
+- Combine both source and targeet languaes in one csv file.
+
+```
+paste -d"\t" train.tok.vi train.tok.en > train.tok.csv
+paste -d"\t" dev.tok.vi dev.tok.en > dev.tok.csv1
+paste -d"\t" test.tok.vi test.tok.en > test.tok.csv
+```
