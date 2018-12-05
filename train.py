@@ -25,8 +25,8 @@ parser.add_argument('--lr', type=float, default=.001)
 parser.add_argument('--dp_ratio', type=float, default=0.2)
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--basepath', type=str, default='iwslt-vi-en')
-parser.add_argument('--train_file', type=str, default='train_tok.csv')
-parser.add_argument('--val_file', type=str, default='val_tok.csv')
+parser.add_argument('--train_file', type=str, default='train.tok.csv')
+parser.add_argument('--val_file', type=str, default='dev.tok.csv')
 parser.add_argument('--log_every', type=int, default=50)
 parser.add_argument('--dev_every', type=int, default=1000)
 parser.add_argument('--experiment', type=str, default='test')
@@ -59,7 +59,7 @@ TGT = data.Field(init_token=BOS_WORD, eos_token=EOS_WORD, pad_token=BLANK_WORD)
 
 train, val = data.TabularDataset.splits(
     path=params.basepath,
-    train=train_file, validation=val_file,
+    train=params.train_file, validation=params.val_file,
     format='tsv',
     skip_header=True,
     fields=[('src', SRC), ('tgt', TGT)]
