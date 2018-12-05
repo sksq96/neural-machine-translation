@@ -1,4 +1,5 @@
 import time
+import os
 from argparse import ArgumentParser
 
 
@@ -29,8 +30,16 @@ parser.add_argument('--val_file', type=str, default='val_tok.csv')
 parser.add_argument('--log_every', type=int, default=50)
 parser.add_argument('--dev_every', type=int, default=1000)
 parser.add_argument('--experiment', type=str, default='test')
+parser.add_argument('--outf', type=str, default='save')
 params = parser.parse_args()
 
+
+print(params)
+
+try:
+    os.makedirs(params.outf)
+except OSError:
+    pass
 
 # gpu business
 if torch.cuda.is_available():
@@ -53,7 +62,8 @@ train, val = data.TabularDataset.splits(
     train=train_file, validation=val_file,
     format='tsv',
     skip_header=True,
-    fields=[('src', SRC), ('tgt', TGT)])
+    fields=[('src', SRC), ('tgt', TGT)]
+)
 
 
 # build vocabulary
@@ -73,7 +83,8 @@ train_iter, valid_iter = data.BucketIterator.splits(
     (train, val),
     batch_size=params.batch_size,
     sort_key=lambda x: (len(x.src), len(x.tgt)),
-    device=device)
+    device=device
+)
 
 
 model = make_model(len_source, len_target, N=params.n_layers)
@@ -120,6 +131,10 @@ def main():
         loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model,
                          SimpleLossCompute(model.generator, criterion, opt=None))
         print(loss)
+
+        # do checkpointing
+        torch.save(model.state_dict(),
+                   f'{params.outf}/netG_epoch_{epoch}.pth')
 
 
 
