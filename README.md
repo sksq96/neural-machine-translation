@@ -13,6 +13,6 @@ sed -i "" 's/\"/\&quot;/g' *.vi
 
 ```
 paste -d"\t" train.tok.vi train.tok.en > train.tok.csv
-paste -d"\t" dev.tok.vi dev.tok.en > dev.tok.csv1
+paste -d"\t" dev.tok.vi dev.tok.en > dev.tok.csv
 paste -d"\t" test.tok.vi test.tok.en > test.tok.csv
 ```
