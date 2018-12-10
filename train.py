@@ -149,7 +149,7 @@ def main():
         print(loss.data())
 
         # do checkpointing
-        torch.save(model.state_dict(), f'{params.outf}/model_epoch_{epoch}.pth')
+        torch.save(model.state_dict(), f'{params.outf}/model.pth')
 
 
 if __name__ == "__main__":
