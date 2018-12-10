@@ -17,6 +17,8 @@ parser.add_argument('--epochs', type=int, default=10)
 parser.add_argument('--batch_size', type=int, default=64)
 parser.add_argument('--encoder', type=str, default='rnn')
 parser.add_argument('--n_layers', type=int, default=6)
+parser.add_argument('--max_len', type=int, default=100)
+parser.add_argument('--min_freq', type=int, default=3)
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--basepath', type=str, default='iwslt-vi-en')
 parser.add_argument('--train_file', type=str, default='train.tok.csv')
@@ -55,14 +57,15 @@ train, val = data.TabularDataset.splits(
     train=params.train_file, validation=params.val_file,
     format='tsv',
     skip_header=True,
-    fields=[('src', SRC), ('tgt', TGT)]
+    fields=[('src', SRC), ('tgt', TGT)],
+    filter_pred=lambda x: len(vars(x)['src']) <= params.max_len and len(
+        vars(x)['tgt']) <= params.max_len,
 )
 
 
 # build vocabulary
-MIN_FREQ = 2
-SRC.build_vocab(train.src, min_freq=MIN_FREQ)
-TGT.build_vocab(train.tgt, min_freq=MIN_FREQ)
+SRC.build_vocab(train.src, min_freq=params.min_freq)
+TGT.build_vocab(train.tgt, min_freq=params.min_freq)
 
 pad_idx = TGT.vocab.stoi[BLANK_WORD]
 
@@ -113,43 +116,40 @@ model_opt = NoamOpt(model.src_embed[0].d_model, 1, 2000,
                     torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
 
 
-
-def run_epoch(data_iter, model, loss_compute):
+def run_epoch(epoch, data_iter, model, loss_compute, train=True):
     "Standard Training and Logging Function"
     start = time.time()
-    total_tokens = 0
-    total_loss = 0
-    tokens = 0
+    total_tokens = 0.
+    total_loss = 0.
+    tokens = 0.
     for i, batch in enumerate(data_iter):
+        ntokens = batch.ntokens.float()
         out = model.forward(batch.src, batch.tgt,
                             batch.src_mask, batch.tgt_mask)
-        loss = loss_compute(out, batch.tgt_y, batch.ntokens)
+        loss = loss_compute(out, batch.tgt_y, ntokens)
         total_loss += loss
-        total_tokens += batch.ntokens
-        tokens += batch.ntokens
-        if i % params.log_every == 0:
+        total_tokens += ntokens
+        tokens += ntokens
+        if i % params.log_every == 0 and train:
             elapsed = time.time() - start
-            print("Epoch Step: %d Loss: %f Tokens per Sec: %f" %
-                  (i, loss / batch.ntokens.float(), tokens / elapsed))
+            print(f"Epoch {epoch} Step: {i} Loss: {loss / ntokens.float()} Tokens per Sec")
             start = time.time()
-            tokens = 0
+            tokens = 0.
     return total_loss / total_tokens
 
 
 def main():
     for epoch in range(params.epochs):
         model.train()
-        run_epoch((rebatch(pad_idx, b) for b in train_iter), model,
+        run_epoch(epoch, (rebatch(pad_idx, b) for b in train_iter), model,
                   SimpleLossCompute(model.generator, criterion, opt=model_opt))
         model.eval()
-        loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model,
+        loss = run_epoch(epoch, (rebatch(pad_idx, b) for b in valid_iter), model,
                          SimpleLossCompute(model.generator, criterion, opt=None))
-        print(loss)
+        print(loss.data())
 
         # do checkpointing
-        torch.save(model.state_dict(),
-                   f'{params.outf}/netG_epoch_{epoch}.pth')
-
+        torch.save(model.state_dict(), f'{params.outf}/model_epoch_{epoch}.pth')
 
 
 if __name__ == "__main__":

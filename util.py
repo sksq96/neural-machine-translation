@@ -19,4 +19,3 @@ def rebatch(pad_idx, batch):
     "Fix order in torchtext to match ours"
     src, tgt = batch.src.transpose(0, 1), batch.tgt.transpose(0, 1)
     return Batch(src, tgt, pad_idx)
-
