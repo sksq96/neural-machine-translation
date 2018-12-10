@@ -29,4 +29,3 @@ for t in ['dev', 'train', 'test']:
     df.to_csv(os.path.join(params.basepath, filename.format(t, 'csv')), sep='\t', index=False)
 
 print(df.sample(10))
-
